@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "smartcash-ai",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "smartcash-ai-db",
+      "database_id": "be63fbb4-7da1-41e3-b074-bce3b9e503d0",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "RECEIPTS",
+      "bucket_name": "smartcash-ai-receipts"
+    }
+  ]
+}
