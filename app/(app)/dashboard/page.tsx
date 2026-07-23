@@ -10,7 +10,11 @@ import {
   WalletCards,
 } from "lucide-react";
 import { PageHeader } from "@/app/components/PageHeader";
-import { getTransactions, summarizeTransactions } from "@/app/lib/data";
+import {
+  getCashFlowSeries,
+  getTransactions,
+  summarizeTransactions,
+} from "@/app/lib/data";
 import { currency } from "@/app/lib/format";
 import { requireUser } from "@/app/lib/auth";
 
@@ -18,15 +22,24 @@ export default async function DashboardPage() {
   const user = await requireUser("/dashboard");
   const transactions = await getTransactions(user.id);
   const summary = summarizeTransactions(transactions);
+  const cashFlow = getCashFlowSeries(transactions);
   const recent = transactions.slice(0, 5);
-  const hasData = transactions.length > 0;
+  const hasConfirmedData = summary.confirmed > 0;
+  const hasCashFlowData = cashFlow.some((period) => period.sales > 0 || period.expenses > 0);
+  const chartMaximum = Math.max(
+    1,
+    ...cashFlow.flatMap((period) => [period.sales, period.expenses]),
+  );
+  const chartDescription = cashFlow
+    .map((period) => `${period.label}: jualan ${currency(period.sales)}, perbelanjaan ${currency(period.expenses)}`)
+    .join("; ");
 
   return (
     <main className="app-content">
       <PageHeader
         eyebrow="Dashboard utama"
         title={`Selamat datang, ${user.fullName.split(" ")[0]}`}
-        description={`Ringkasan kewangan ${user.businessName} untuk bulan ini.`}
+        description={`Ringkasan keseluruhan kewangan ${user.businessName} berdasarkan transaksi yang telah disahkan.`}
         action={<Link className="primary-button link-button" href="/receipts">Imbas resit</Link>}
       />
 
@@ -35,13 +48,13 @@ export default async function DashboardPage() {
           <span className="summary-icon income-icon" aria-hidden="true"><ChartNoAxesCombined size={19} strokeWidth={2} /></span>
           <span className="summary-label">Jumlah jualan</span>
           <strong>{currency(summary.sales)}</strong>
-          <small className="trend-positive">Pendapatan disahkan</small>
+          <small className="trend-positive">Keseluruhan hasil jualan disahkan</small>
         </article>
         <article className="summary-card">
           <span className="summary-icon expense-icon" aria-hidden="true"><ShoppingCart size={19} strokeWidth={2} /></span>
           <span className="summary-label">Jumlah perbelanjaan</span>
           <strong>{currency(summary.expenses)}</strong>
-          <small>Daripada resit dan rekod</small>
+          <small>Keseluruhan kos yang telah disahkan</small>
         </article>
         <article className="summary-card">
           <span className="summary-icon profit-icon" aria-hidden="true"><BadgeDollarSign size={20} strokeWidth={2} /></span>
@@ -55,7 +68,7 @@ export default async function DashboardPage() {
           <span className="summary-icon cash-icon" aria-hidden="true"><WalletCards size={20} strokeWidth={2} /></span>
           <span className="summary-label">Baki tunai</span>
           <strong>{currency(summary.cash)}</strong>
-          <small>{summary.pending} transaksi menunggu semakan</small>
+          <small>Tunai masuk ditolak tunai keluar</small>
         </article>
       </section>
 
@@ -65,22 +78,38 @@ export default async function DashboardPage() {
             <div><h2>Aliran tunai</h2><p>Perbandingan enam tempoh terkini</p></div>
             <span className="period-chip">6 bulan</span>
           </div>
-          {hasData ? (
+          {hasCashFlowData ? (
             <>
               <div
                 className="cash-chart"
                 role="img"
-                aria-label={`Carta menunjukkan jualan ${currency(summary.sales)} dan perbelanjaan ${currency(summary.expenses)}`}
+                aria-label={`Graf aliran tunai enam bulan. ${chartDescription}`}
               >
-                {[38, 52, 47, 67, 59, 82].map((height, index) => (
-                  <div className="chart-column" key={index}>
-                    <span className="bar-income" style={{ height: `${height}%` }} />
-                    <span className="bar-expense" style={{ height: `${Math.max(24, height - 22)}%` }} />
+                {cashFlow.map((period) => (
+                  <div className="chart-column" key={period.key}>
+                    <span
+                      className="bar-income"
+                      title={`${period.label} · Jualan ${currency(period.sales)}`}
+                      style={{
+                        height: period.sales
+                          ? `${Math.max(4, (period.sales / chartMaximum) * 100)}%`
+                          : 0,
+                      }}
+                    />
+                    <span
+                      className="bar-expense"
+                      title={`${period.label} · Perbelanjaan ${currency(period.expenses)}`}
+                      style={{
+                        height: period.expenses
+                          ? `${Math.max(4, (period.expenses / chartMaximum) * 100)}%`
+                          : 0,
+                      }}
+                    />
                   </div>
                 ))}
               </div>
               <div className="chart-axis" aria-hidden="true">
-                <span>Feb</span><span>Mac</span><span>Apr</span><span>Mei</span><span>Jun</span><span>Jul</span>
+                {cashFlow.map((period) => <span key={period.key}>{period.label}</span>)}
               </div>
               <div className="chart-legend">
                 <span><i className="legend-income" /> Jualan</span>
@@ -90,8 +119,8 @@ export default async function DashboardPage() {
           ) : (
             <div className="empty-state compact">
               <span aria-hidden="true"><FilePlus2 size={22} strokeWidth={2} /></span>
-              <h3>Belum ada data aliran tunai</h3>
-              <p>Imbas resit pertama anda atau gunakan akaun demo.</p>
+              <h3>Belum ada data untuk enam bulan ini</h3>
+              <p>Rekod dan sahkan transaksi untuk membina graf aliran tunai.</p>
             </div>
           )}
         </article>
@@ -99,14 +128,14 @@ export default async function DashboardPage() {
         <article className="panel ai-panel">
           <div className="ai-badge"><span aria-hidden="true"><Sparkles size={15} strokeWidth={2} /></span> Analisis pintar</div>
           <h2>
-            {hasData
+            {hasConfirmedData
               ? summary.profit >= 0
                 ? "Prestasi kewangan anda berada pada landasan yang baik."
                 : "Perbelanjaan anda melebihi jualan bulan ini."
               : "Mulakan dengan resit pertama anda."}
           </h2>
           <p>
-            {hasData
+            {hasConfirmedData
               ? `Margin anggaran semasa ialah ${summary.sales ? Math.round((summary.profit / summary.sales) * 100) : 0}%. Semak cadangan terperinci untuk langkah seterusnya.`
               : "SmartCash AI akan membina insight selepas transaksi pertama direkodkan."}
           </p>

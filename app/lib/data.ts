@@ -79,11 +79,65 @@ export function summarizeTransactions(transactions: TransactionRecord[]) {
   const expenses = confirmed
     .filter((item) => item.type === "expense")
     .reduce((total, item) => total + item.amount, 0);
+  const cashIncome = confirmed
+    .filter((item) => item.type === "income" && item.paymentMethod === "Tunai")
+    .reduce((total, item) => total + item.amount, 0);
+  const cashExpenses = confirmed
+    .filter((item) => item.type === "expense" && item.paymentMethod === "Tunai")
+    .reduce((total, item) => total + item.amount, 0);
   return {
     sales,
     expenses,
     profit: sales - expenses,
-    cash: sales - expenses,
+    cash: cashIncome - cashExpenses,
+    confirmed: confirmed.length,
     pending: transactions.filter((item) => item.status === "review").length,
   };
+}
+
+export type CashFlowPeriod = {
+  key: string;
+  label: string;
+  sales: number;
+  expenses: number;
+  net: number;
+};
+
+export function getCashFlowSeries(
+  transactions: TransactionRecord[],
+  periodCount = 6,
+  referenceDate = new Date(),
+): CashFlowPeriod[] {
+  const formatter = new Intl.DateTimeFormat("ms-MY", {
+    month: "short",
+    timeZone: "UTC",
+  });
+  const periods = Array.from({ length: periodCount }, (_, index) => {
+    const date = new Date(Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth() - (periodCount - 1 - index),
+      1,
+    ));
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    return {
+      key,
+      label: formatter.format(date),
+      sales: 0,
+      expenses: 0,
+      net: 0,
+    };
+  });
+  const byMonth = new Map(periods.map((period) => [period.key, period]));
+
+  transactions
+    .filter((item) => item.status === "confirmed")
+    .forEach((item) => {
+      const period = byMonth.get(item.date.slice(0, 7));
+      if (!period) return;
+      if (item.type === "income") period.sales += item.amount;
+      if (item.type === "expense") period.expenses += item.amount;
+      period.net = period.sales - period.expenses;
+    });
+
+  return periods;
 }

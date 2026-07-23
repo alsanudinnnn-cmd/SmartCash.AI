@@ -18,6 +18,8 @@ test("includes the complete SmartCash application routes", async () => {
   assert.match(login, /LoginForm/);
   assert.match(register, /RegisterForm/);
   assert.match(dashboard, /Aliran tunai/);
+  assert.match(dashboard, /getCashFlowSeries/);
+  assert.doesNotMatch(dashboard, /\[38, 52, 47, 67, 59, 82\]/);
   assert.match(receipts, /ReceiptUploader/);
   assert.match(budget, /BudgetManager/);
   assert.match(journal, /Jurnal Am/);
