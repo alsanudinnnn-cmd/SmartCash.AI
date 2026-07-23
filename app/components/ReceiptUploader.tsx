@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CircleCheckBig,
   CloudUpload,
+  Camera,
+  FileUp,
   PencilLine,
   Sparkles,
 } from "lucide-react";
@@ -26,30 +28,47 @@ type Analysis = {
 
 const PAYMENT_METHODS = ["Tunai", "Bank", "Kad", "E-dompet"];
 
-export function ReceiptUploader() {
+export function ReceiptUploader({
+  onStepChange,
+}: {
+  onStepChange: (step: number) => void;
+}) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [saved, setSaved] = useState(false);
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!selectedFile) {
+      setError("Pilih fail atau ambil gambar resit terlebih dahulu.");
+      return;
+    }
     setBusy(true);
     setError("");
+    onStepChange(2);
+    const formData = new FormData(event.currentTarget);
+    formData.set("receipt", selectedFile, selectedFile.name);
     const response = await fetch("/api/receipts", {
       method: "POST",
-      body: new FormData(event.currentTarget),
+      body: formData,
     });
     const result = (await response.json()) as Analysis & { error?: string };
     if (!response.ok) {
       setError(result.error ?? "Resit tidak dapat dianalisis.");
       setBusy(false);
+      onStepChange(1);
       return;
     }
     setAnalysis(result);
     setBusy(false);
+    onStepChange(3);
   }
 
   async function confirm(event: FormEvent<HTMLFormElement>) {
@@ -78,12 +97,52 @@ export function ReceiptUploader() {
       setConfirming(false);
       return;
     }
-    router.push("/transactions");
-    router.refresh();
+    setSaved(true);
+    onStepChange(3);
+    window.setTimeout(() => {
+      router.push("/journal");
+      router.refresh();
+    }, 1250);
   }
 
   function updateAnalysis<K extends keyof Analysis>(key: K, value: Analysis[K]) {
     setAnalysis((current) => current ? { ...current, [key]: value } : current);
+  }
+
+  function selectReceipt(file?: File) {
+    if (!file) return;
+    setSelectedFile(file);
+    setFileName(file.name || `resit-${Date.now()}.jpg`);
+    setError(file.size > 10 * 1024 * 1024 ? "Saiz fail melebihi had 10 MB." : "");
+  }
+
+  function handleFileInput(event: ChangeEvent<HTMLInputElement>) {
+    selectReceipt(event.target.files?.[0]);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    selectReceipt(event.dataTransfer.files?.[0]);
+  }
+
+  function resetReceipt() {
+    setAnalysis(null);
+    setSelectedFile(null);
+    setFileName("");
+    setError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    onStepChange(1);
+  }
+
+  if (saved) {
+    return (
+      <div className="receipt-save-success" aria-live="polite" role="status">
+        <span className="receipt-save-check" aria-hidden="true"><CircleCheckBig size={44} strokeWidth={2.4} /></span>
+        <h2>Resit berjaya disimpan</h2>
+        <p>Rekod anda sedang ditambah ke halaman Transaksi.</p>
+      </div>
+    );
   }
 
   if (analysis) {
@@ -201,10 +260,7 @@ export function ReceiptUploader() {
         <div className="review-actions">
           <button
             className="secondary-button"
-            onClick={() => {
-              setAnalysis(null);
-              setError("");
-            }}
+            onClick={resetReceipt}
             type="button"
           >
             Pilih resit lain
@@ -219,29 +275,50 @@ export function ReceiptUploader() {
 
   return (
     <form className="receipt-form" onSubmit={analyze}>
-      <label className="upload-zone">
+      <div
+        className="upload-zone"
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={handleDrop}
+      >
         <input
-          name="receipt"
+          ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,application/pdf"
-          required
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            setFileName(file?.name ?? "");
-            setError(
-              file && file.size > 10 * 1024 * 1024
-                ? "Saiz fail melebihi had 10 MB."
-                : "",
-            );
-          }}
+          aria-label="Pilih fail resit"
+          onChange={handleFileInput}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          aria-label="Ambil gambar resit menggunakan kamera"
+          onChange={handleFileInput}
         />
         <span className="upload-symbol" aria-hidden="true">
           <CloudUpload size={24} strokeWidth={2} />
         </span>
-        <strong>{fileName || "Pilih atau seret resit ke sini"}</strong>
+        <strong>{fileName || "Pilih fail, seret atau ambil gambar resit"}</strong>
         <small>JPG, PNG, WebP atau PDF · maksimum 10 MB</small>
-        <span className="upload-button">Pilih fail</span>
-      </label>
+        <div className="upload-actions">
+          <button
+            className="upload-button"
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileUp size={16} aria-hidden="true" />
+            Pilih fail
+          </button>
+          <button
+            className="upload-button camera-button"
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera size={16} aria-hidden="true" />
+            Buka kamera
+          </button>
+        </div>
+      </div>
       <div className="receipt-fields">
         <label>
           <span>Nama peniaga <small>(pilihan)</small></span>
@@ -273,7 +350,11 @@ export function ReceiptUploader() {
         </label>
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <button className="primary-button analyze-button" disabled={busy} type="submit">
+      <button
+        className="primary-button analyze-button"
+        disabled={busy || !selectedFile || Boolean(error)}
+        type="submit"
+      >
         {!busy && <Sparkles size={17} aria-hidden="true" />}
         {busy ? "Gemini sedang membaca resit…" : "Baca resit dengan Gemini"}
       </button>

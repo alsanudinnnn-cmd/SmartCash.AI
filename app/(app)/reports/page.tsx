@@ -5,6 +5,7 @@ import { ReportActions } from "@/app/components/ReportActions";
 import { getTransactions, summarizeTransactions } from "@/app/lib/data";
 import { currency } from "@/app/lib/format";
 import { requireUser } from "@/app/lib/auth";
+import { getAllBudgets } from "@/app/lib/budgets";
 
 const statementNames = {
   income: "Penyata Pendapatan",
@@ -22,8 +23,10 @@ export default async function ReportsPage({
   searchParams: Promise<{ statement?: string }>;
 }) {
   const user = await requireUser("/reports");
-  const transactions = await getTransactions(user.id);
-  const summary = summarizeTransactions(transactions);
+  const [transactions, budgets] = await Promise.all([getTransactions(user.id), getAllBudgets(user.id)]);
+  const transactionSummary = summarizeTransactions(transactions);
+  const sales = budgets.reduce((total, budget) => total + Number(budget.amount), 0);
+  const summary = { ...transactionSummary, sales, profit: sales - transactionSummary.expenses };
   const requested = (await searchParams).statement;
   const active: StatementKey = requested && requested in statementNames
     ? requested as StatementKey
@@ -35,7 +38,7 @@ export default async function ReportsPage({
       <PageHeader
         eyebrow="Penyata kewangan"
         title={statementNames[active]}
-        description={`Laporan ${user.businessName} berdasarkan transaksi yang telah disahkan.`}
+        description={`Laporan ${user.businessName}; hasil jualan menggunakan jumlah bajet yang dimasukkan.`}
         action={<ReportActions />}
       />
       <section className="report-layout">

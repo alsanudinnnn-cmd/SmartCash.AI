@@ -4,11 +4,14 @@ import { PageHeader } from "@/app/components/PageHeader";
 import { getTransactions, summarizeTransactions } from "@/app/lib/data";
 import { currency } from "@/app/lib/format";
 import { requireUser } from "@/app/lib/auth";
+import { getAllBudgets } from "@/app/lib/budgets";
 
 export default async function AnalysisPage() {
   const user = await requireUser("/analysis");
-  const transactions = await getTransactions(user.id);
-  const summary = summarizeTransactions(transactions);
+  const [transactions, budgets] = await Promise.all([getTransactions(user.id), getAllBudgets(user.id)]);
+  const transactionSummary = summarizeTransactions(transactions);
+  const sales = budgets.reduce((total, budget) => total + Number(budget.amount), 0);
+  const summary = { ...transactionSummary, sales, profit: sales - transactionSummary.expenses };
   const margin = summary.sales ? Math.round((summary.profit / summary.sales) * 100) : 0;
   const utility = transactions.filter((item) => item.category === "Utiliti").reduce((total, item) => total + item.amount, 0);
   return (
@@ -18,11 +21,11 @@ export default async function AnalysisPage() {
         title="Insight untuk keputusan lebih baik"
         description="Cadangan berdasarkan corak dalam transaksi dan prestasi kewangan semasa."
       />
-      {transactions.length ? (
+      {transactions.length || budgets.length ? (
         <section className="insight-grid">
           <article className="insight-card insight-primary">
             <span className="insight-symbol" aria-hidden="true"><TrendingUp size={23} strokeWidth={2} /></span>
-            <div><span>Prestasi jualan</span><h2>Jualan terkumpul ialah {currency(summary.sales)}.</h2><p>Teruskan merekod jualan secara konsisten supaya ramalan aliran tunai menjadi lebih tepat.</p></div>
+            <div><span>Prestasi jualan</span><h2>Jumlah bajet jualan ialah {currency(summary.sales)}.</h2><p>Jumlah ini menggunakan bajet yang anda masukkan. Teruskan merekod perbelanjaan untuk insight yang lebih tepat.</p></div>
           </article>
           <article className="insight-card insight-warning">
             <span className="insight-symbol" aria-hidden="true"><TriangleAlert size={22} strokeWidth={2} /></span>

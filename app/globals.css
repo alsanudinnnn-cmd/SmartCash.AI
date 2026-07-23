@@ -984,6 +984,31 @@ button,
   border-radius: 5px 5px 0 0;
 }
 
+.chart-view-toggle {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--slate-100);
+}
+
+.chart-view-toggle button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--slate-600);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.chart-view-toggle button.active {
+  background: var(--white);
+  color: var(--primary-dark);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
 .bar-income {
   background: var(--primary);
 }
@@ -1250,13 +1275,20 @@ tbody tr:last-child td {
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+  transition: color 200ms ease;
 }
 
 .upload-steps span.active {
   color: var(--primary-dark);
+  animation: step-label-in 220ms ease-out both;
+}
+
+.upload-steps span.complete {
+  color: var(--slate-700);
 }
 
 .upload-steps b {
+  position: relative;
   width: 25px;
   height: 25px;
   display: grid;
@@ -1264,6 +1296,7 @@ tbody tr:last-child td {
   border-radius: 50%;
   background: var(--slate-100);
   font-size: 10px;
+  transition: background 200ms ease, color 200ms ease, transform 200ms ease;
 }
 
 .upload-steps .active b {
@@ -1271,10 +1304,87 @@ tbody tr:last-child td {
   color: var(--white);
 }
 
+.upload-steps .active b::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: step-active-ring 1.5s ease-out infinite;
+}
+
+.upload-steps span.complete b {
+  background: var(--success);
+  color: var(--white);
+}
+
+.upload-steps span.complete b svg {
+  animation: step-check-pop 240ms ease-out both;
+}
+
 .upload-steps i {
+  position: relative;
+  overflow: hidden;
   width: 42px;
   height: 1px;
   background: var(--slate-200);
+}
+
+.upload-steps i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--success);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.upload-steps i.complete::after {
+  animation: step-line-fill 280ms ease-out forwards;
+}
+
+@keyframes step-active-ring {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.72);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes step-check-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-18deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes step-line-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes step-label-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .receipt-form {
@@ -1294,7 +1404,6 @@ tbody tr:last-child td {
   border-radius: var(--radius-md);
   background: var(--slate-50);
   text-align: center;
-  cursor: pointer;
   transition: border-color 180ms ease, background 180ms ease;
 }
 
@@ -1335,13 +1444,36 @@ tbody tr:last-child td {
 }
 
 .upload-button {
-  margin-top: 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   padding: 8px 14px;
   border: 1px solid var(--slate-300);
   border-radius: 9px;
   background: var(--white);
+  color: var(--neutral);
   font-size: 11px;
   font-weight: 700;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.camera-button {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--white);
+}
+
+.camera-button:hover {
+  border-color: var(--neutral);
+  background: var(--neutral);
 }
 
 .receipt-fields {
@@ -1542,6 +1674,69 @@ tbody tr:last-child td {
   margin-top: 18px;
 }
 
+.receipt-save-success {
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  max-width: 850px;
+  margin-inline: auto;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+  background: radial-gradient(circle at center, #f0fdf4 0, var(--white) 68%);
+  text-align: center;
+}
+
+.receipt-save-success h2 { margin: 8px 0 0; color: #14532d; font-size: 21px; }
+.receipt-save-success p { margin: 0; color: var(--success); font-size: 12px; }
+
+.verification-box {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  background: var(--primary-soft);
+}
+
+.verification-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--white);
+}
+
+.verification-box strong { color: var(--primary-dark); font-size: 13px; }
+.verification-box p { margin: 3px 0 0; color: var(--slate-600); font-size: 11px; }
+.verification-code { grid-column: 1 / -1; margin-top: 4px; }
+.verification-code input { letter-spacing: 0.32em; font-size: 18px; font-weight: 800; text-align: center; }
+.verification-actions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; }
+.resend-code { justify-self: center; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--primary-dark); font-size: 11px; font-weight: 750; }
+.form-success { margin: 0; color: var(--success); font-size: 12px; }
+
+.receipt-save-check {
+  width: 82px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--success);
+  color: var(--white);
+  box-shadow: 0 0 0 13px rgba(34, 197, 94, 0.15);
+  animation: receipt-success-pop 480ms cubic-bezier(.2, .9, .25, 1.25) both;
+}
+
+@keyframes receipt-success-pop {
+  from { opacity: 0; transform: scale(0.3) rotate(-28deg); }
+  70% { transform: scale(1.1) rotate(3deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
 /* Journal */
 .journal-list {
   display: grid;
@@ -1551,6 +1746,54 @@ tbody tr:last-child td {
 .journal-card {
   padding: 22px;
 }
+
+.journal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 2px 4px;
+}
+
+.journal-search { width: min(100%, 420px); }
+
+.journal-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.journal-toggle .journal-meta { width: 100%; }
+.journal-meta > span:first-child > span { color: var(--slate-500); font-size: 10px; }
+.journal-meta h2 { margin: 3px 0; font-size: 16px; }
+.journal-meta p { margin: 0; color: var(--slate-500); font-size: 11px; }
+.journal-chevron { flex: 0 0 auto; color: var(--slate-500); transition: transform 180ms ease; }
+.journal-card.is-expanded .journal-chevron { transform: rotate(180deg); }
+.journal-card .responsive-table { margin-top: 18px; }
+
+.receipt-items {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--primary-soft);
+  border-radius: 12px;
+  background: var(--slate-50);
+  animation: receipt-items-in 180ms ease-out both;
+}
+
+.receipt-items > div:first-child { display: flex; align-items: center; gap: 10px; }
+.receipt-items > div:first-child > span:last-child { display: grid; gap: 2px; }
+.receipt-items small { color: var(--slate-500); font-size: 10px; }
+.receipt-items-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: var(--primary-soft); color: var(--primary-dark); }
+.receipt-items .responsive-table { margin-top: 13px; }
+.receipt-items-empty { margin: 13px 0 0; color: var(--slate-600); font-size: 12px; }
+
+@keyframes receipt-items-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
 .journal-meta {
   display: flex;
@@ -2008,6 +2251,12 @@ tbody tr:last-child td {
     min-height: 220px;
   }
 
+  .upload-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
   .analyze-button {
     width: 100%;
   }
@@ -2019,6 +2268,15 @@ tbody tr:last-child td {
 
   .journal-card {
     padding: 16px;
+  }
+
+  .journal-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .journal-search {
+    width: 100%;
   }
 
   .journal-meta {

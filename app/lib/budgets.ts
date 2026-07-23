@@ -22,6 +22,20 @@ export async function getBudgets(userId: string, month: string): Promise<BudgetR
   return result.results;
 }
 
+export async function getAllBudgets(userId: string): Promise<BudgetRecord[]> {
+  await ensureSchema();
+  const result = await getBindings().DB.prepare(
+    `SELECT id, month, category, amount
+     FROM budgets
+     WHERE user_id = ?
+     ORDER BY month ASC, category ASC`,
+  )
+    .bind(userId)
+    .all<BudgetRecord>();
+
+  return result.results;
+}
+
 export async function getMonthlySpending(
   userId: string,
   month: string,

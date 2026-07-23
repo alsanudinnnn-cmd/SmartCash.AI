@@ -13,6 +13,7 @@ export type GeminiReceiptAnalysis = {
   category: (typeof BUDGET_CATEGORIES)[number];
   description: string;
   confidence: number;
+  items: Array<{ name: string; quantity: number; unitPrice: number; total: number }>;
 };
 
 type GeminiResponse = {
@@ -86,6 +87,7 @@ export async function analyzeReceiptWithGemini({
                 "category",
                 "description",
                 "confidence",
+                "items",
               ],
               properties: {
                 merchant: {
@@ -123,6 +125,20 @@ export async function analyzeReceiptWithGemini({
                 confidence: {
                   type: "NUMBER",
                   description: "Tahap keyakinan keseluruhan antara 0 dan 1.",
+                },
+                items: {
+                  type: "ARRAY",
+                  description: "Setiap barangan atau perkhidmatan yang kelihatan pada resit.",
+                  items: {
+                    type: "OBJECT",
+                    required: ["name", "quantity", "unitPrice", "total"],
+                    properties: {
+                      name: { type: "STRING" },
+                      quantity: { type: "NUMBER" },
+                      unitPrice: { type: "NUMBER" },
+                      total: { type: "NUMBER" },
+                    },
+                  },
                 },
               },
             },
@@ -175,6 +191,7 @@ function buildPrompt(hints?: {
   return [
     "Baca resit ini sebagai rekod perbelanjaan perniagaan Malaysia.",
     "Ekstrak peniaga, tarikh transaksi, jumlah akhir, cukai, nombor resit dan kaedah bayaran.",
+    "Ekstrak juga setiap barangan atau perkhidmatan dengan kuantiti, harga seunit dan jumlah baris. Jika item tidak jelas, pulangkan senarai items kosong.",
     "Pilih tepat satu kategori daripada senarai skema berdasarkan barang atau perkhidmatan yang dibeli.",
     "Jangan anggap cukai 6%; gunakan 0 jika cukai tidak dinyatakan.",
     "Jika tahun tidak jelas, gunakan tahun semasa hanya apabila ia munasabah.",
@@ -195,6 +212,7 @@ function validateAnalysis(value: Record<string, unknown>): GeminiReceiptAnalysis
   const category = String(value.category);
   const paymentMethod = String(value.paymentMethod);
   const confidence = Number(value.confidence);
+  const items = parseItems(value.items);
 
   if (!merchant || !description) throw new Error("Butiran utama resit tidak dapat dibaca.");
   if (!/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(date)) {
@@ -225,7 +243,26 @@ function validateAnalysis(value: Record<string, unknown>): GeminiReceiptAnalysis
     confidence: Number.isFinite(confidence)
       ? Math.min(1, Math.max(0, confidence))
       : 0.7,
+    items,
   };
+}
+
+function parseItems(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 60).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const name = cleanText(row.name, 120);
+    const quantityValue = Number(row.quantity);
+    const totalValue = Number(row.total);
+    const quantity = Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1;
+    const total = Number.isFinite(totalValue) && totalValue >= 0 ? totalValue : 0;
+    const unitPriceValue = Number(row.unitPrice);
+    const unitPrice = Number.isFinite(unitPriceValue) && unitPriceValue >= 0
+      ? unitPriceValue
+      : total / quantity;
+    return name ? [{ name, quantity, unitPrice: roundMoney(unitPrice), total: roundMoney(total) }] : [];
+  });
 }
 
 function cleanText(value: unknown, maxLength: number) {

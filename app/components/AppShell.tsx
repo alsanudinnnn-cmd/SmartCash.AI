@@ -10,9 +10,9 @@ import {
   LayoutDashboard,
   LogOut,
   PiggyBank,
-  ReceiptText,
   ScanLine,
   Sparkles,
+  Store,
   WalletCards,
   X,
 } from "lucide-react";
@@ -20,9 +20,8 @@ import {
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/receipts", label: "Imbas Resit", icon: ScanLine },
-  { href: "/transactions", label: "Transaksi", icon: ReceiptText },
   { href: "/budget", label: "Bajet", icon: PiggyBank },
-  { href: "/journal", label: "Jurnal Am", icon: BookOpenText },
+  { href: "/journal", label: "Transaksi", icon: BookOpenText },
   { href: "/reports", label: "Penyata Kewangan", icon: FileChartColumn },
   { href: "/analysis", label: "Analisis AI", icon: Sparkles },
 ];
@@ -73,7 +72,7 @@ export function AppShell({
         </div>
         <div className="business-chip">
           <span className="business-avatar" aria-hidden="true">
-            {user.businessName.slice(0, 2).toUpperCase()}
+            <Store size={18} strokeWidth={2.2} />
           </span>
           <span><small>Perniagaan</small><strong>{user.businessName}</strong></span>
         </div>

@@ -20,9 +20,10 @@ test("includes the complete SmartCash application routes", async () => {
   assert.match(dashboard, /Aliran tunai/);
   assert.match(dashboard, /getCashFlowSeries/);
   assert.doesNotMatch(dashboard, /\[38, 52, 47, 67, 59, 82\]/);
-  assert.match(receipts, /ReceiptUploader/);
+  assert.match(receipts, /ReceiptWorkflow/);
   assert.match(budget, /BudgetManager/);
-  assert.match(journal, /Jurnal Am/);
+  assert.match(journal, /JournalTransactions/);
+  assert.match(journal, /title="Transaksi"/);
   assert.match(reports, /Penyata Pendapatan/);
   assert.match(analysis, /Analisis AI/);
 });
@@ -40,10 +41,11 @@ test("produces a deployable build and persistent data migration", async () => {
 });
 
 test("keeps Gemini receipt analysis on the server", async () => {
-  const [analyzer, route, uploader] = await Promise.all([
+  const [analyzer, route, uploader, workflow] = await Promise.all([
     readFile(new URL("../app/lib/gemini-receipt.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/receipts/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/ReceiptUploader.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ReceiptWorkflow.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(analyzer, /generativelanguage\.googleapis\.com/);
@@ -51,7 +53,16 @@ test("keeps Gemini receipt analysis on the server", async () => {
   assert.match(analyzer, /responseMimeType: "application\/json"/);
   assert.match(route, /GEMINI_API_KEY/);
   assert.match(uploader, /Baca resit dengan Gemini/);
+  assert.match(uploader, /capture="environment"/);
+  assert.match(uploader, /Buka kamera/);
   assert.match(uploader, /Semua cadangan di bawah boleh diedit/);
   assert.match(uploader, /Simpan transaksi/);
+  assert.match(uploader, /Resit berjaya disimpan/);
+  assert.match(workflow, /aria-current=\{active \? "step"/);
+  assert.match(workflow, /onStepChange=\{setCurrentStep\}/);
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(styles, /@keyframes step-active-ring/);
+  assert.match(styles, /@keyframes step-line-fill/);
+  assert.match(styles, /@keyframes receipt-success-pop/);
   assert.doesNotMatch(uploader, /GEMINI_API_KEY/);
 });

@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
   }
 
   await ensureSchema();
-  await DB.prepare(
+  const createdAt = Date.now();
+  const statements = [DB.prepare(
     `INSERT INTO transactions (
       id, user_id, date, merchant, receipt_number, description, category,
       account, type, amount, tax_amount, payment_method, status,
@@ -103,9 +104,25 @@ export async function POST(request: NextRequest) {
       paymentMethod,
       receiptKey,
       analysis.confidence,
-      Date.now(),
-    )
-    .run();
+      createdAt,
+    )];
+  analysis.items.forEach((item) => {
+    statements.push(DB.prepare(
+      `INSERT INTO receipt_items (
+        id, transaction_id, user_id, item_name, quantity, unit_price, total, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(),
+      id,
+      user.id,
+      item.name,
+      item.quantity,
+      item.unitPrice,
+      item.total,
+      createdAt,
+    ));
+  });
+  await DB.batch(statements);
 
   return NextResponse.json({
     id,
@@ -119,6 +136,7 @@ export async function POST(request: NextRequest) {
     description: analysis.description,
     confidence: analysis.confidence,
     analysisSource: "gemini",
+    items: analysis.items,
   });
 }
 
